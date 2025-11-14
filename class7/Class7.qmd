@@ -1,0 +1,293 @@
+---
+title: "Class 7: Machine Learning 1"
+author: "Elsa Quillin (A69043008)"
+format: pdf
+---
+
+Today we will begin our exploration of some "classical" machine learning approaches. We will start with clustering:
+
+Let's first make up some data to cluster where we know what the answer should be.
+
+```{r}
+hist( rnorm(1000) )
+```
+
+```{r}
+x<- c(rnorm(30, mean=-3), rnorm(30, mean=3))
+y<- rev(x)
+
+x<- cbind(x, y)
+head(x)
+
+```
+
+A wee peak at x with `plot()`
+```{r}
+plot(x)
+```
+
+The main function in "base" R for K-means clustering is called `kmeans()`.
+
+```{r}
+k<- kmeans(x, centers=2)
+k
+```
+
+>Q. How big are the clusters (i.e. their size)?
+
+```{r}
+k$size
+```
+
+>Q. What clusters do my data points reside in?
+
+```{r}
+k$cluster
+```
+
+>Q. Make a plot of our data colored by cluster assignment- i.e. Make a result figure...
+
+```{r}
+plot(x, col=k$cluster)
+points(k$centers, col="blue", pch=15)
+
+```
+
+>Q. Cluster with k-means into 4 clusters and plot your results as above
+
+```{r}
+k4<- kmeans(x, centers=4)
+plot(x, col=k4$cluster)
+points(k4$centers, col="blue", pch=15)
+```
+
+>Q. Run k-means with centers (i.e.values of k) equal 1 to 6. tot.withinss
+
+```{r}
+ans <- NULL
+for(i in 1:6){
+  ans<- c(ans, kmeans(x, centers=i)$tot.withinss)
+}
+ans
+```
+
+Make a "scree-plot"
+
+```{r}
+plot(ans, typ="b")
+```
+
+## Hierarchical Clustering
+
+The main function in "base" R for this is called `hclust()`
+
+```{r}
+d<- dist(x)
+hc<- hclust(d)
+plot(hc)
+abline(h=7, col="red")
+```
+
+To obtain clusters from our `hclust()` result object **hc** we "cut" the tree to yield different sub branches. For this we use the `cutree()` function
+
+```{r}
+grps<- cutree(hc, h=7)
+grps
+```
+
+Results figure
+```{r}
+plot(x, col=grps)
+```
+
+## Principal Component Analysis
+
+```{r}
+url <- "https://tinyurl.com/UK-foods"
+x <- read.csv(url)
+```
+
+>Q1. How many rows and columns are in your new data frame named x? What R functions could you use to answer this questions?
+
+```{r}
+dim(x)
+```
+
+```{r}
+rownames(x) <- x[,1]
+x <- x[,-1]
+head(x)
+```
+```{r}
+dim(x)
+```
+
+>Q2. Which approach to solving the ‘row-names problem’ mentioned above do you prefer and why? Is one approach more robust than another under certain circumstances?
+
+I like the second approach (row.names=1) more since I feel like there is less room for error. 
+
+```{r}
+barplot(as.matrix(x), beside=T, col=rainbow(nrow(x)))
+```
+
+>Q3: Changing what optional argument in the above barplot() function results in the following plot?
+
+You could change the "beside" argument to false, as shown below
+
+```{r}
+barplot(as.matrix(x), beside=FALSE, col=rainbow(nrow(x)))
+```
+
+
+```{r}
+library(tidyr)
+
+x_long <- x |> 
+          tibble::rownames_to_column("Food") |> 
+          pivot_longer(cols = -Food, 
+                       names_to = "Country", 
+                       values_to = "Consumption")
+
+dim(x_long)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(x_long) +
+  aes(x = Country, y = Consumption, fill = Food) +
+  geom_col(position = "dodge") +
+  theme_bw()
+```
+
+>Q4: Changing what optional argument in the above ggplot() code results in a stacked barplot figure?
+
+You can change the geom_col argument from dodge to stack
+
+```{r}
+library(ggplot2)
+
+ggplot(x_long) +
+  aes(x = Country, y = Consumption, fill = Food) +
+  geom_col(position = "stack") +
+  theme_bw()
+```
+>Q5: We can use the pairs() function to generate all pairwise plots for our countries. Can you make sense of the following code and resulting figure? What does it mean if a given point lies on the diagonal for a given plot?
+
+A given point being on the line shows it's relationship between the two countries it is related to. For example the pink dot in the plot below England means it's high in England and also high in Wales.
+
+```{r}
+pairs(x, col=rainbow(nrow(x)), pch=16)
+```
+
+
+```{r}
+library(pheatmap)
+
+pheatmap( as.matrix(x) )
+```
+
+>Q6. Based on the pairs and heatmap figures, which countries cluster together and what does this suggest about their food consumption patterns? Can you easily tell what the main differences between N. Ireland and the other countries of the UK in terms of this data-set?
+
+England and Wales cluster together the most, indicating they have more similar food consumption patterns. After that Scotland, England, and Wales are clustered, meaning Ireland has the most different food consumption patterns.
+
+```{r}
+pca <- prcomp( t(x) )
+summary(pca)
+```
+>Q7. Complete the code below to generate a plot of PC1 vs PC2. The second line adds text labels over the data points.
+
+```{r}
+df <- as.data.frame(pca$x)
+df$Country <- rownames(df)
+
+ggplot(pca$x) +
+  aes(x = PC1, y = PC2, label = rownames(pca$x)) +
+  geom_point(size = 3) +
+  geom_text(vjust = -0.5) +
+  xlim(-270, 500) +
+  xlab("PC1") +
+  ylab("PC2") +
+  theme_bw()
+```
+>Q8. Customize your plot so that the colors of the country names match the colors in our UK and Ireland map and table at start of this document.
+
+```{r}
+df <- as.data.frame(pca$x)
+df$Country <- rownames(df)
+
+cols <- c("orange", "red", "blue", "darkgreen")
+
+ggplot(df, aes(x = PC1, y = PC2, label = Country, color = Country)) +
+  geom_point(size = 3) +
+  geom_text(vjust = -0.5) +
+  xlim(-270, 500) +
+  xlab("PC1") +
+  ylab("PC2") +
+  scale_color_manual(values = cols) +
+  theme_bw()
+```
+
+
+```{r}
+v <- round( pca$sdev^2/sum(pca$sdev^2) * 100 )
+v
+z <- summary(pca)
+z$importance
+```
+```{r}
+# Create scree plot with ggplot
+variance_df <- data.frame(
+  PC = factor(paste0("PC", 1:length(v)), levels = paste0("PC", 1:length(v))),
+  Variance = v
+)
+
+ggplot(variance_df) +
+  aes(x = PC, y = Variance) +
+  geom_col(fill = "steelblue") +
+  xlab("Principal Component") +
+  ylab("Percent Variation") +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 0))
+```
+
+```{r}
+ggplot(pca$rotation) +
+  aes(x = PC1, 
+      y = reorder(rownames(pca$rotation), PC1)) +
+  geom_col(fill = "steelblue") +
+  xlab("PC1 Loading Score") +
+  ylab("") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 9))
+```
+
+>Q9: Generate a similar ‘loadings plot’ for PC2. What two food groups feature prominantely and what does PC2 maninly tell us about?
+
+The two food groups that are featured predominantly are soft drinks and fresh potatoes.
+
+```{r}
+ggplot(pca$rotation) +
+  aes(x = PC2, 
+      y = reorder(rownames(pca$rotation), PC2)) +
+  geom_col(fill = "steelblue") +
+  xlab("PC2 Loading Score") +
+  ylab("") +
+  theme_bw() +
+  theme(axis.text.y = element_text(size = 9))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
