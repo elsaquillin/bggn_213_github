@@ -1,0 +1,89 @@
+---
+title: "Class 09"
+author: "Elsa Quillin (PID: A69043008)"
+format: html
+---
+
+## The PDB database
+
+```{r}
+library(readr)
+
+stats <- read.csv("Data Export Summary.csv")
+stats
+```
+
+> Q1: What percentage of structures in the PDB are solved by X-Ray and Electron Microscopy.
+
+```{r}
+Xray <- sum( stats$`X-ray`)
+EM <- sum(stats$EM)
+Total <- sum( stats$Total)
+
+(Xray/Total)*100
+(EM/Total)*100
+
+((Xray+EM)/Total)*100
+
+```
+
+
+> Q2: What proportion of structures in the PDB are protein?
+
+```{r}
+
+protein <- sum(stats[1, 2:(ncol(stats) - 1)])
+
+protein/Total
+
+```
+> Make a bar plot overview.
+
+```{r}
+library(ggplot2)
+
+ggplot(stats) + 
+  aes(x = reorder(`Molecular Type`, -Total), y = Total, fill = `Molecular Type`) + 
+  geom_col(width = 0.7) +
+  labs(
+    title = "Total structures by Molecular Type",
+    x = "Molecular Type",
+    y = "Number of Structures",
+    fill = "Method")
+```
+
+
+
+
+> Q3: Type HIV in the PDB website search box on the home page and determine how many HIV-1 protease structures are in the current PDB?
+
+There are currently 2,406 hits for HIV-1 protease structures
+
+## Visualizing structure data
+
+The Mol* viewer is embedded in many bioinformatics website. The homepage is https://molstar.org/
+
+I can insert any figure or image file using markadown format
+
+![The HIV-Pr dimer with bound inhibitor](1HSG.png)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

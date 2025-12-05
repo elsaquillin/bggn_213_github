@@ -1,0 +1,58 @@
+---
+title: "HW6"
+author: "Elsa Quillin (PID: A69043008)"
+format: pdf
+---
+
+## Original code:
+
+```{r}
+library(bio3d)
+s1 <- read.pdb("4AKE") # kinase with drug
+s2 <- read.pdb("1AKE") # kinase no drug
+s3 <- read.pdb("1E4Y") # kinase with drug
+s1.chainA <- trim.pdb(s1, chain="A", elety="CA")
+s2.chainA <- trim.pdb(s2, chain="A", elety="CA")
+s3.chainA <- trim.pdb(s3, chain="A", elety="CA")
+s1.b <- s1.chainA$atom$b
+s2.b <- s2.chainA$atom$b
+s3.b <- s3.chainA$atom$b
+plotb3(s1.b, sse=s1.chainA, typ="l", ylab="Bfactor")
+plotb3(s2.b, sse=s2.chainA, typ="l", ylab="Bfactor")
+plotb3(s3.b, sse=s3.chainA, typ="l", ylab="Bfactor")
+```
+
+```{r}
+hc <- hclust( dist( rbind(s1.b, s2.b, s3.b) ) )
+plot(hc)
+```
+
+
+## My code:
+
+```{r}
+library(bio3d)
+
+#input for pdb_code is the 4 digit protein specific code
+#This is a function that will read pdb for the protein you enter
+analysis <- function(pdb_code){
+  pdb <- read.pdb(pdb_code)
+#here the code will trim the output from pdb for chain A and the alpha carbon element
+chainA <- trim.pdb(pdb, chain="A", elety="CA")
+#here it will create a new definition "b" which is only the Bfactor
+b <- chainA$atom$b
+#this code is creating a plot of the residues against the B factor
+plotb3(b, sse=chainA, typ="l", ylab="Bfactor")
+#the return is showing the data
+return(b)
+}
+
+```
+
+Test:
+
+```{r}
+analysis("4AKE")
+```
+
+

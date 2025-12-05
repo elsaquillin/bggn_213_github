@@ -1,0 +1,270 @@
+---
+title: "Lab08 Mini Project"
+author: "Elsa Quillin (PID: A69043008"
+format: pdf
+toc: true
+---
+
+## Background
+
+The goal of this mini-project is for you to explore a complete analysis using the unsupervised learning techniques covered in the last class. We will extend what you’ve learned by combining PCA as a preprocessing step to clustering using data that consist of measurements of cell nuclei of human breast masses. This expands on our RNA-Seq analysis from last day.
+
+The data itself comes from the Wisconsin Breast Cancer Diagnostic Data Set first reported by K. P. Benne and O. L. Mangasarian: “Robust Linear Programming Discrimination of Two Linearly Inseparable Sets”.
+
+Values in this data set describe characteristics of the cell nuclei present in digitized images of a fine needle aspiration (FNA) of a breast mass.
+
+## Data import
+
+```{r}
+fna.data <- "https://bioboot.github.io/bimm143_S20/class-material/WisconsinCancer.csv"
+wisc.df <- read.csv(fna.data, row.names = 1)
+head(wisc.df)
+```
+
+```{r}
+wisc.data <- wisc.df[,-1]
+head(wisc.data)
+```
+
+```{r}
+diagnosis <- as.factor(wisc.df$diagnosis)
+```
+
+> Q1. How many observations are in this dataset?
+
+```{r}
+dim(wisc.data)
+```
+There are 30 observations for each sample
+
+> Q2. How many of the observations have a malignant diagnosis?
+
+```{r}
+sum(diagnosis == "M")
+```
+212 of the observations have a malignant diagnosis, so 357 are benign
+
+> Q3. How many variables/features in the data are suffixed with _mean?
+
+```{r}
+length(grep("_mean", colnames(wisc.data)))
+```
+
+There are 10 columns that are suffixed with "_mean"
+
+## Principal Component Analysis
+
+The main function in base R for PCA is called `prcomp()`. An optional argument `scale()` should nearly always be switched to `scale=TRUE` for this function.
+
+```{r}
+colMeans(wisc.data)
+
+apply(wisc.data,2,sd)
+```
+
+```{r}
+wisc.pr <- prcomp(wisc.data, scale=TRUE)
+summary(wisc.pr)
+```
+
+>Q4. From your results, what proportion of the original variance is captured by the first principal components (PC1)?
+
+PC1 captures 0.4427 of the variance (44.27%).
+
+>Q5. How many principal components (PCs) are required to describe at least 70% of the original variance in the data?
+
+Three PCAs are required to get to at least 70% of the variance.
+
+>Q6. How many principal components (PCs) are required to describe at least 90% of the original variance in the data?
+
+Seven PCAs are required to get to at least 90% of variance.
+
+Let's make our main result figure-the "PC plot", or "score plot", or "ordienation plot"
+
+```{r}
+biplot(wisc.pr)
+```
+
+
+>Q7. What stands out to you about this plot? Is it easy or difficult to understand? Why?
+
+This plot is very messy and impossible to read since there is so much overlap
+
+```{r}
+library(ggplot2)
+
+ggplot(wisc.pr$x)+
+  aes(PC1, PC2, col=diagnosis) +
+  geom_point()
+```
+
+> Q8. Generate a similar plot for principal components 1 and 3. What do you notice about these plots?
+
+```{r}
+ggplot(wisc.pr$x)+
+  aes(PC1, PC3, col=diagnosis) +
+  geom_point()
+```
+
+```{r}
+pr.var <- wisc.pr$sdev^2
+head(pr.var)
+```
+
+```{r}
+pve <- pr.var/ sum(pr.var)
+
+plot(pve, xlab = "Principal Component", 
+     ylab = "Proportion of Variance Explained", 
+     ylim = c(0, 1), type = "o")
+```
+
+```{r}
+barplot(pve, ylab = "Percent of Variance Explained",
+     names.arg=paste0("PC",1:length(pve)), las=2, axes = FALSE)
+axis(2, at=pve, labels=round(pve,2)*100 )
+```
+
+```{r}
+library(factoextra)
+fviz_eig(wisc.pr, addlabels = TRUE)
+```
+
+> Q9. For the first principal component, what is the component of the loading vector (i.e. wisc.pr$rotation[,1]) for the feature concave.points_mean? This tells us how much this original feature contributes to the first PC.
+
+```{r}
+wisc.pr$rotation[,1]
+```
+
+-0.26085376
+
+## Hierarchical Clustering
+
+```{r}
+data.scaled <- scale(wisc.data)
+data.dist <- dist(data.scaled)
+wisc.hclust <- hclust(data.dist, method = "complete")
+```
+
+> Q10. Using the plot() and abline() functions, what is the height at which the clustering model has 4 clusters?
+
+```{r}
+plot(wisc.hclust)
+abline(h=19, col="red", lty=2)
+```
+
+```{r}
+wisc.hclust.clusters <- cutree(wisc.hclust, h=19)
+table(wisc.hclust.clusters, diagnosis)
+```
+
+> Q12. Which method gives your favorite results for the same data.dist dataset? Explain your reasoning.
+
+```{r}
+wisc.hclust <- hclust(data.dist, method = "ward.D2")
+plot(wisc.hclust)
+```
+
+I preferred the "ward.D2" method since it was the easiest method to visualize the number of clusters. The other methods ended up being a lot more chaotic (especially "single", yuck!) making it harder to distinguish the branches.
+
+## Combining methods
+
+```{r}
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[,1:7]), method = "ward.D2")
+```
+
+```{r}
+grps <- cutree(wisc.pr.hclust, k=2)
+table(grps)
+```
+
+```{r}
+table(grps, diagnosis)
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=diagnosis)
+```
+
+```{r}
+g <- as.factor(grps)
+levels(g)
+```
+
+```{r}
+g <- relevel(g,2)
+levels(g)
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=g)
+```
+
+```{r}
+wisc.pr.hclust <- hclust(dist(wisc.pr$x[, 1:7]), method="ward.D2")
+
+wisc.pr.hclust.clusters <- cutree(wisc.pr.hclust, k=2)
+```
+
+```{r}
+table(wisc.pr.hclust.clusters)
+```
+
+> Q13. How well does the newly created model with four clusters separate out the two diagnoses?
+
+```{r}
+table(wisc.pr.hclust.clusters, diagnosis)
+```
+It separates them out pretty well, but not perfectly. It captured 88.7% of the malignant samples, which in a clinical practice seems really low. It captured 92% of the benign tumors which is a little better.
+
+> Q14. How well do the hierarchical clustering models you created in previous sections (i.e. before PCA) do in terms of separating the diagnoses? Again, use the table() function to compare the output of each model (wisc.km$cluster and wisc.hclust.clusters) with the vector containing the actual diagnoses.
+
+```{r}
+table(wisc.hclust.clusters, diagnosis)
+```
+
+It does a little worse than the previous method in identifying the malignant tumors, but correctly identified more of the benign tumors into one group. So it is identifying more malignant tumors as benign which is more dangerous in practice since people could go untreated if this algorithm was determining their sample results. 
+
+## Prediction
+
+```{r}
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+```
+```{r}
+plot(wisc.pr$x[,1:2], col=g)
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+```
+
+> Q16. Which of these new patients should we prioritize for follow up based on your results?
+
+We should prioritize patients from group 2 for followup since they have been clustered as the malignant group and therefore have sample results that more closely relate to the malignant features. 
+
+```{r}
+sessionInfo()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
