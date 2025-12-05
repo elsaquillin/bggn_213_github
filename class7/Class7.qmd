@@ -1,7 +1,7 @@
 ---
 title: "Class 7: Machine Learning 1"
 author: "Elsa Quillin (A69043008)"
-format: pdf
+format: gfm
 ---
 
 Today we will begin our exploration of some "classical" machine learning approaches. We will start with clustering:
